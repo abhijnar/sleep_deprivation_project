@@ -1,0 +1,155 @@
+---
+title: "Finish Aligning and Generate Read Counts"
+author: "Abhijna Reddy"
+date: "2025-03-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Setup
+
+```{r setupPackages}
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(reshape2)
+  library(DESeq2)
+  library(magrittr)
+  library(vsn)
+})
+```
+
+## QC
+
+```{r qc}
+
+fc_summary <- read.table("featureCounts_gene_results.summary", header=TRUE)
+
+fc_summary_long <- melt(fc_summary, id.vars = "Status", variable.name = "Sample", value.name = "Count")
+fc_summary_long$Sample <- sapply(strsplit(as.character(fc_summary_long$Sample), "\\."), `[`, 2)
+fc_summary_long_selected_col <- fc_summary_long[fc_summary_long$Status %in% c("Assigned", "Unassigned_Ambiguity", "Unassigned_NoFeatures"),]
+
+ggplot(fc_summary_long_selected_col, aes(x = Count, y = Sample, fill = Status)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(title = "FC Summart", x = "No. of Reads", y = "Sample") +
+  scale_fill_manual(values = c("Assigned" = "salmon", "Unassigned_NoFeatures" = "dodgerblue")) +
+  theme(legend.position = "bottom")
+
+```
+
+
+## Loading read counts
+
+```{r loadreadCounts}
+df_counts <- read.table("featureCounts_gene_results", header=TRUE)
+```
+
+## Processing
+
+```{r processing}
+orig_names <- names(df_counts)
+
+names(df_counts) <- c(names(df_counts)[1:6], paste("NSD_batch1", c(1:4), sep = "_"), 
+                      paste("NSD_batch2", c(1:5), sep = "_"), 
+                      paste("SD_batch1", c(1:4), sep = "_"), 
+                      paste("SD_batch2", c(1:5), sep = "_"))
+
+row.names(df_counts) <- make.names(df_counts$Geneid)
+cts_gene_sample <- df_counts[ , -c(1:6)]
+
+df_coldata <- data.frame(condition = gsub("_[0-9]+", "", names(cts_gene_sample)), 
+                         row.names = colnames(cts_gene_sample))
+
+dds <- DESeqDataSetFromMatrix(countData = cts_gene_sample,
+                                         colData = df_coldata,
+                                         design = ~ condition)
+df_rowdata <- df_counts[, 1:6]
+rowData(dds) <- df_rowdata
+```
+
+```{r plottingCounts}
+colSums(counts(dds)) %>% barplot(las=2)
+```
+
+```{r processingContd}
+dim(dds)
+keep_genes <- rowSums(counts(dds)) > 0
+dds <- dds[ keep_genes, ]
+dim(dds)
+```
+
+## Normalization
+
+```{r normalization}
+dds <- estimateSizeFactors(dds) 
+plot( sizeFactors(dds), colSums(counts(dds)),
+      ylab = "library sizes", xlab = "size factors", cex = .6)
+
+par(mfrow=c(1,2))
+counts.sf_normalized <- counts(dds, normalized=TRUE)
+boxplot(counts(dds), main = "read counts only", cex = .6, cex.axis = 0.7, las=2)
+boxplot(counts.sf_normalized, main = "SF normalized", cex = .6, cex.axis = 0.7, las=2)
+
+# hard to tell so transforming data
+par(mfrow=c(1,2))
+boxplot(log2(counts(dds) +1), notch=TRUE,
+        main = "Non-normalized read counts",
+        ylab ="log2(read counts)", cex = .6, cex.axis = 0.7, las=2)
+boxplot(log2(counts(dds, normalized=TRUE) +1), notch=TRUE,
+        main = "Size-factor-normalized read counts",
+        ylab ="log2(read counts)", cex = .6, cex.axis = 0.7, las=2)
+```
+No large batch effects observed.
+
+## Log transformation
+
+```{r logtransform}
+og_counts <- log2(counts(dds, normalized = FALSE) + 1)
+assay(dds, "log_counts") <- log2(counts(dds, normalized = FALSE) + 1)
+assay(dds, "log_norm_counts") <- log2(counts(dds, normalized=TRUE) + 1)
+
+par(mfrow=c(1,2))
+dds[, c("NSD_batch2_1","NSD_batch2_2")] %>%
+assay(., "log_norm_counts") %>%
+plot(., cex=.1, main = "NSD_batch2_1 vs. NSD_batch2_2")
+dds[, c("SD_batch2_1","SD_batch2_2")] %>%
+assay(., "log_norm_counts") %>%
+plot(., cex=.1, main = "SD_batch2_1 vs SD_batch2_2")
+```
+
+## MSD Plot
+
+```{r msd}
+par(mfrow=c(1,1))
+msd_plot <- vsn::meanSdPlot(assay(dds, "log_norm_counts"),
+                            ranks=FALSE, plot = FALSE)
+msd_plot$gg + ggtitle("Sequencing depth normalized log2(read counts)") +
+  ylab("standard deviation")
+```
+
+The plot indicates signs of heteroskedasticity.
+
+## Reducing the dependence of the variance on the mean
+
+```{r dst}
+dst_rlog <- rlog(dds, blind = TRUE)
+
+par(mfrow=c(1,2))
+plot(assay(dds, "log_norm_counts")[,1:2], cex=.1,
+     main = "size factor and log2-transformed")
+plot(assay(dst_rlog)[,1:2], cex=.1, main = "rlog transformed",
+     xlab = colnames(assay(dst_rlog[,1])), ylab = colnames(assay(dst_rlog[,2])) )
+
+rlog_norm_counts <- assay(dst_rlog)
+msd_plot <- vsn::meanSdPlot(assay(dst_rlog), ranks=FALSE, plot = FALSE)
+msd_plot$gg + labs(title = "Following rlog transformation", x = "Mean", y = "Standard deviation") +
+  coord_cartesian(ylim = c(0,3))
+save.image(file = "RNAseqGierlinski.RData")
+```
+
+
+
+
