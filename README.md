@@ -16,7 +16,7 @@ Collated results from the QoRTs analysis are in the `reports` directory.
 
 ### Data
 
-The counts data used for this analysis are made available in the `data` directory.
+The counts data created by FeatureCounts and used for the DGE analysis are made available in the `data` directory.
 
 ### Walk through
 
