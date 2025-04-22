@@ -12,7 +12,7 @@ The order of scripts to be run is numbered from 1 to 9 and is available in the `
 
 ### Reports
 
-QoRTs results collated are in the `reports` directory.
+Collated results from the QoRTs analysis are in the `reports` directory.
 
 ### Data
 
