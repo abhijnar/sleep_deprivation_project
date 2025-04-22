@@ -8,16 +8,16 @@ The mice were either under the condition where their sleep was deprived by movin
 
 ### Scripts
 
-The order of scripts to be run is numbered from 1 to 9 and is available in the scripts directory.
+The order of scripts to be run is numbered from 1 to 9 and is available in the `scripts` directory.
 
 ### Reports
 
-QoRTs results collated are in the reports directory.
+QoRTs results collated are in the `reports` directory.
 
 ### Data
 
-The counts data used for this analysis are made available in the data directory.
+The counts data used for this analysis are made available in the `data` directory.
 
 ### Walk through
 
-The Sleep_Deprivation.Rmd is a walkthrough of the analysis starting from downloading the data, to processing and aligning, the related QC and finally the DGE and GSEA analyses.
+The `Sleep_Deprivation.Rmd` is a walkthrough of the analysis starting from downloading the data, to processing and aligning, the related QC and finally the DGE and GSEA analyses.
