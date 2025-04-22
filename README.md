@@ -4,7 +4,7 @@ The data for this project is obtained from the NCBI Gene Expression Omnibus (GEO
 
 ### Experimental condition
 
-The mice were either under the condition where their sleep was deprived by moving and tapping their cage (gentle handling method) or under the condition where their sleep was not disturbed.
+The mice were either under the condition where their sleep was deprived (`SD`) by moving and tapping their cage (gentle handling method) or under the condition where their sleep was not disturbed (`NSD`).
 
 ### Scripts
 
